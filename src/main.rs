@@ -2,6 +2,7 @@ mod new_model;
 mod vse_model;
 
 use anyhow::Result;
+use colored::*;
 use new_model::Backup as NewBackup;
 use new_model::Copy as NewCopy;
 use new_model::Site as NewSite;
@@ -11,11 +12,11 @@ use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 use vse_model::OldVse;
-use colored::*;
 
 use crate::new_model::{ArchTierRepo, CapTierRepo, NewVse};
 
 use clap::Parser;
+use dialoguer::Input;
 
 #[derive(Parser)]
 #[clap(author, version, about)]
@@ -31,7 +32,7 @@ struct Cli {
 
     /// Pring the result
     #[clap(short, long, action, default_value_t = false)]
-    print: bool
+    print: bool,
 }
 
 fn main() -> Result<()> {
@@ -105,11 +106,17 @@ fn main() -> Result<()> {
 
         let perf_id_name = format!("repo_{}", item.site.to_lowercase());
 
+        let dia_text = format!("Enable Capacity Tier Copy on {perf_id_name}?");
+        let cap_tier_copy = Input::<bool>::new()
+            .with_prompt(dia_text)
+            .default(false)
+            .interact_text()?;
+
         let perf_repo = PerfTierRepo {
             repo_id: perf_id_name.clone(),
             repo_name: perf_id_name.clone(),
             site_id: item.site.to_lowercase(),
-            copy_capacity_tier_enabled: item.cloud_enabled,
+            copy_capacity_tier_enabled: cap_tier_copy,
             move_capacity_tier_enabled: item.cloud_enabled,
             archive_tier_enabled: false,
             capacity_tier_days: item.cloud_move,
@@ -151,7 +158,7 @@ fn main() -> Result<()> {
             large_blocks: false,
             source_tb: item.work_load_cap,
             units: item.vm_qty,
-            workload_type: String::from("VM"),
+            workload_type: item.backup_type.to_uppercase(),
             data_property_id: dp_id_name,
             backup: NewBackup {
                 retention_policy_id: rt_id_name,
@@ -210,15 +217,18 @@ fn main() -> Result<()> {
 
     let file_name = format!("{}.json", save_name[0]);
     let mut json_file = fs::File::create(file_name)?;
-
     let vse_string = serde_json::to_string(&new_vse)?;
-
     json_file.write(vse_string.as_bytes())?;
+
+    let toml_file_name = format!("{}.yaml", save_name[0]);
+    let mut toml_file = fs::File::create(toml_file_name)?;
+    let vse_toml_string = serde_yaml::to_string(&new_vse)?;
+    toml_file.write(vse_toml_string.as_bytes())?;
 
     if cli.print {
         println!("{:#?}", new_vse);
     }
-    
+
     println!("{}", "Complete".green());
 
     Ok(())
