@@ -103,14 +103,20 @@ fn main() -> Result<()> {
         };
 
         retentions.insert(rt_id_name.clone(), rp);
+        
 
         let perf_id_name = format!("repo_{}", item.site.to_lowercase());
+        let cap_tier_copy: bool;
 
-        let dia_text = format!("Enable Capacity Tier Copy on {perf_id_name}?");
-        let cap_tier_copy = Input::<bool>::new()
-            .with_prompt(dia_text)
-            .default(false)
-            .interact_text()?;
+        if !perf_repos.contains_key(&perf_id_name) {
+            let dia_text = format!("Enable Capacity Tier Copy on {perf_id_name}?");
+            cap_tier_copy = Input::<bool>::new()
+                .with_prompt(dia_text)
+                .default(false)
+                .interact_text()?;
+        } else {
+            cap_tier_copy = perf_repos.get(&perf_id_name).unwrap().copy_capacity_tier_enabled;
+        }
 
         let perf_repo = PerfTierRepo {
             repo_id: perf_id_name.clone(),
