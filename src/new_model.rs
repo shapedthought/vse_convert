@@ -1,18 +1,20 @@
 use serde::Deserialize;
 use serde::Serialize;
 
+
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NewVse {
     pub project_length: i64,
     pub show_points: bool,
+    pub show_workloads: bool,
     pub sites: Vec<Site>,
     pub perf_tier_repos: Vec<PerfTierRepo>,
     pub cap_tier_repos: Vec<CapTierRepo>,
     pub arch_tier_repos: Vec<ArchTierRepo>,
     pub data_properties: Vec<DataProperty>,
     pub backup_windows: Vec<BackupWindow>,
-    pub retention_policies: Vec<RetentionPolicy>,
+    pub retentions: Vec<Retentions>,
     pub workloads: Vec<Workload>,
 }
 
@@ -79,9 +81,9 @@ pub struct BackupWindow {
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RetentionPolicy {
-    pub retention_policy_id: String,
-    pub retention_policy_name: String,
+pub struct Retentions {
+    pub retention_id: String,
+    pub retention_name: String,
     pub simple: i64,
     pub weekly: i64,
     pub monthly: i64,
@@ -109,7 +111,7 @@ pub struct Workload {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Backup {
-    pub retention_policy_id: String,
+    pub retention_id: String,
     pub repo_id: String,
     pub backup_window_id: String,
 }
@@ -117,7 +119,7 @@ pub struct Backup {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Copy {
-    pub retention_policy_id: String,
+    pub retention_id: String,
     pub repo_id: String,
     pub backup_window_id: String,
 }

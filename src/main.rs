@@ -6,7 +6,7 @@ use colored::*;
 use new_model::Backup as NewBackup;
 use new_model::Copy as NewCopy;
 use new_model::Site as NewSite;
-use new_model::{BackupWindow, DataProperty, PerfTierRepo, RetentionPolicy, Workload};
+use new_model::{BackupWindow, DataProperty, PerfTierRepo, Retentions, Workload};
 use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
@@ -30,7 +30,7 @@ struct Cli {
     #[clap(short, long, value_parser)]
     save_file: String,
 
-    /// Pring the result
+    /// Print the result
     #[clap(short, long, action, default_value_t = false)]
     print: bool,
 }
@@ -55,7 +55,7 @@ fn main() -> Result<()> {
 
     let mut data_properties: HashMap<String, DataProperty> = HashMap::new();
     let mut backup_window: HashMap<String, BackupWindow> = HashMap::new();
-    let mut retentions: HashMap<String, RetentionPolicy> = HashMap::new();
+    let mut retentions: HashMap<String, Retentions> = HashMap::new();
     let mut perf_repos: HashMap<String, PerfTierRepo> = HashMap::new();
     let mut new_workloads: Vec<Workload> = Vec::new();
 
@@ -93,9 +93,9 @@ fn main() -> Result<()> {
             item.rps_bu, item.bu_weekly, item.bu_monthly, item.bu_yearly
         );
 
-        let rp = RetentionPolicy {
-            retention_policy_id: rt_id_name.clone(),
-            retention_policy_name: rt_id_name.clone(),
+        let rp = Retentions {
+            retention_id: rt_id_name.clone(),
+            retention_name: rt_id_name.clone(),
             simple: item.rps_bu,
             weekly: item.bu_weekly,
             monthly: item.bu_monthly,
@@ -103,6 +103,21 @@ fn main() -> Result<()> {
         };
 
         retentions.insert(rt_id_name.clone(), rp);
+
+        if item.copy_site != "None" {
+            let rt_id_copy_name = format!("{}D{}W{}M{}Y", item.rps_bu_copy, item.bu_copy_weekly, item.bu_copy_monthly, item.bu_copy_yearly);
+
+            let rpc = Retentions {
+                retention_id: rt_id_copy_name.clone(),
+                retention_name: rt_id_copy_name.clone(),
+                simple: item.rps_bu_copy,
+                weekly: item.bu_copy_weekly,
+                monthly: item.bu_copy_monthly,
+                yearly: item.bu_copy_yearly,
+            };
+
+            retentions.insert(rt_id_copy_name, rpc);
+        }
         
 
         let perf_id_name = format!("repo_{}", item.site.to_lowercase());
@@ -142,7 +157,7 @@ fn main() -> Result<()> {
 
         if item.copy_site != "None" {
             let copy = NewCopy {
-                retention_policy_id: format!(
+                retention_id: format!(
                     "{}D{}W{}M{}Y",
                     item.rps_bu_copy,
                     item.bu_copy_weekly,
@@ -167,7 +182,7 @@ fn main() -> Result<()> {
             workload_type: item.backup_type.to_uppercase(),
             data_property_id: dp_id_name,
             backup: NewBackup {
-                retention_policy_id: rt_id_name,
+                retention_id: rt_id_name,
                 repo_id: perf_id_name,
                 backup_window_id: bw_id_name,
             },
@@ -209,13 +224,14 @@ fn main() -> Result<()> {
     let new_vse = NewVse {
         project_length: project_length,
         show_points: false,
+        show_workloads: true,
         sites: new_sites,
         perf_tier_repos: perf_vec,
         cap_tier_repos: cap_repos,
         arch_tier_repos: arch_repos,
         data_properties: dataproperty_vec,
         backup_windows: backupwindow_vec,
-        retention_policies: retentions_vec,
+        retentions: retentions_vec,
         workloads: new_workloads,
     };
 
