@@ -143,6 +143,7 @@ fn main() -> Result<()> {
             capacity_tier_days: item.cloud_move,
             capacity_tier_repo_id: "ct1".to_string(),
             archive_tier_repo_id: "at1".to_string(),
+            archive_tier_standalone: false,
             archive_tier_days: 0,
             use_per_vm: if item.use_per_vm == "no" { false } else { true },
             block_clone_enabled: if item.use_re_fs == "no" { false } else { true },

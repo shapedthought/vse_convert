@@ -36,6 +36,7 @@ pub struct PerfTierRepo {
     pub archive_tier_enabled: bool,
     pub capacity_tier_days: i64,
     pub archive_tier_days: i64,
+    pub archive_tier_standalone: bool,
     pub capacity_tier_repo_id: String,
     pub archive_tier_repo_id: String,
     #[serde(rename = "usePerVM")]
