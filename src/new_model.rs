@@ -6,14 +6,11 @@ use serde::Serialize;
 #[serde(rename_all = "camelCase")]
 pub struct NewVse {
     pub project_length: i64,
-    pub show_points: bool,
-    pub show_workloads: bool,
     pub sites: Vec<Site>,
-    pub perf_tier_repos: Vec<PerfTierRepo>,
-    pub cap_tier_repos: Vec<CapTierRepo>,
-    pub arch_tier_repos: Vec<ArchTierRepo>,
+    pub repositories: Vec<PerfTierRepo>,
+    pub cap_arch_tiers: Vec<CapArchTier>,
     pub data_properties: Vec<DataProperty>,
-    pub backup_windows: Vec<BackupWindow>,
+    pub windows: Vec<Window>,
     pub retentions: Vec<Retentions>,
     pub workloads: Vec<Workload>,
 }
@@ -21,8 +18,8 @@ pub struct NewVse {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Site {
-    pub site_id: String,
-    pub site_name: String,
+    pub id: String,
+    pub name: String,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -36,29 +33,21 @@ pub struct PerfTierRepo {
     pub archive_tier_enabled: bool,
     pub capacity_tier_days: i64,
     pub archive_tier_days: i64,
-    pub archive_tier_standalone: bool,
+    // pub archive_tier_standalone: bool,
     pub capacity_tier_repo_id: String,
     pub archive_tier_repo_id: String,
-    #[serde(rename = "usePerVM")]
-    pub use_per_vm: bool,
-    pub block_clone_enabled: bool,
-    pub object_storage: bool,
+    pub storage_type: String,
     pub immutable_perf: bool,
     pub immutable_cap: bool,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CapTierRepo {
-    pub cap_tier_repo_id: String,
-    pub cap_tier_repo_name: String,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ArchTierRepo {
-    pub archive_tier_repo_id: String,
-    pub archive_tier_repo_name: String,
+pub struct CapArchTier {
+    pub id: String,
+    pub tier_type: String,
+    pub name: String,
+    pub default: bool
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -69,15 +58,17 @@ pub struct DataProperty {
     pub change_rate: i64,
     pub compression: i64,
     pub growth_factor: i64,
+    pub default: bool
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct BackupWindow {
+pub struct Window {
     pub backup_window_id: String,
     pub backup_window_name: String,
     pub full_window: i64,
     pub incremental_window: i64,
+    pub default: bool
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -89,6 +80,7 @@ pub struct Retentions {
     pub weekly: i64,
     pub monthly: i64,
     pub yearly: i64,
+    pub default: bool
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -98,7 +90,7 @@ pub struct Workload {
     pub enabled: bool,
     pub workload_name: String,
     pub site_id: String,
-    pub large_blocks: bool,
+    pub large_block: bool,
     #[serde(rename = "sourceTB")]
     pub source_tb: f64,
     pub units: i64,
@@ -106,7 +98,7 @@ pub struct Workload {
     pub data_property_id: String,
     pub backup: Backup,
     pub copies_enabled: bool,
-    pub copies: Option<Vec<Copy>>,
+    pub copies: Option<Copy>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]

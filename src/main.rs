@@ -6,14 +6,16 @@ use colored::*;
 use new_model::Backup as NewBackup;
 use new_model::Copy as NewCopy;
 use new_model::Site as NewSite;
-use new_model::{BackupWindow, DataProperty, PerfTierRepo, Retentions, Workload};
+use new_model::{DataProperty, PerfTierRepo, Retentions, Workload};
 use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 use vse_model::OldVse;
 
-use crate::new_model::{ArchTierRepo, CapTierRepo, NewVse};
+use crate::new_model::CapArchTier;
+use crate::new_model:: NewVse;
+use crate::new_model::Window;
 
 use clap::Parser;
 use dialoguer::Input;
@@ -54,7 +56,7 @@ fn main() -> Result<()> {
     }
 
     let mut data_properties: HashMap<String, DataProperty> = HashMap::new();
-    let mut backup_window: HashMap<String, BackupWindow> = HashMap::new();
+    let mut backup_window: HashMap<String, Window> = HashMap::new();
     let mut retentions: HashMap<String, Retentions> = HashMap::new();
     let mut perf_repos: HashMap<String, PerfTierRepo> = HashMap::new();
     let mut new_workloads: Vec<Workload> = Vec::new();
@@ -75,16 +77,18 @@ fn main() -> Result<()> {
             change_rate: item.change_rate,
             compression: 100 - item.reduction,
             growth_factor: item.growth_percent,
+            default: false
         };
         data_properties.insert(dp_id_name.clone(), dp);
 
         let bw_id_name = format!("F24I{}", item.backup_window);
 
-        let bw = BackupWindow {
+        let bw = Window {
             backup_window_id: bw_id_name.clone(),
             backup_window_name: bw_id_name.clone(),
             full_window: 24,
             incremental_window: item.backup_window,
+            default: false
         };
         backup_window.insert(bw_id_name.clone(), bw);
 
@@ -100,6 +104,7 @@ fn main() -> Result<()> {
             weekly: item.bu_weekly,
             monthly: item.bu_monthly,
             yearly: item.bu_yearly,
+            default: false
         };
 
         retentions.insert(rt_id_name.clone(), rp);
@@ -114,6 +119,7 @@ fn main() -> Result<()> {
                 weekly: item.bu_copy_weekly,
                 monthly: item.bu_copy_monthly,
                 yearly: item.bu_copy_yearly,
+                default: false
             };
 
             retentions.insert(rt_id_copy_name, rpc);
@@ -143,18 +149,15 @@ fn main() -> Result<()> {
             capacity_tier_days: item.cloud_move,
             capacity_tier_repo_id: "ct1".to_string(),
             archive_tier_repo_id: "at1".to_string(),
-            archive_tier_standalone: false,
             archive_tier_days: 0,
-            use_per_vm: if item.use_per_vm == "no" { false } else { true },
-            block_clone_enabled: if item.use_re_fs == "no" { false } else { true },
-            object_storage: false,
+            storage_type: "xfsRefs".to_string(),
             immutable_cap: false,
             immutable_perf: false,
         };
         // perf_repos.push(perf_repo);
         perf_repos.insert(perf_id_name.clone(), perf_repo);
 
-        let mut rps_copies: Option<Vec<NewCopy>> = None;
+        let mut rps_copies: Option<NewCopy> = None;
 
         if item.copy_site != "None" {
             let copy = NewCopy {
@@ -168,8 +171,8 @@ fn main() -> Result<()> {
                 repo_id: format!("repo_{}", item.copy_site.to_lowercase()),
                 backup_window_id: bw_id_name.clone(),
             };
-            let copies = vec![copy];
-            rps_copies = Some(copies)
+            // let copies = vec![copy];
+            rps_copies = Some(copy)
         }
 
         let new_workload = Workload {
@@ -177,7 +180,7 @@ fn main() -> Result<()> {
             enabled: true,
             workload_name: item.work_load_name.clone(),
             site_id: item.site.to_lowercase(),
-            large_blocks: false,
+            large_block: false,
             source_tb: item.work_load_cap,
             units: item.vm_qty,
             workload_type: item.backup_type.to_uppercase(),
@@ -202,20 +205,35 @@ fn main() -> Result<()> {
     let new_sites: Vec<NewSite> = sites_hash
         .iter()
         .map(|w| NewSite {
-            site_id: w.0.to_string(),
-            site_name: w.1.to_string(),
+            id: w.0.to_string(),
+            name: w.1.to_string(),
         })
         .collect();
 
-    let cap_repos = vec![CapTierRepo {
-        cap_tier_repo_id: "ct1".to_string(),
-        cap_tier_repo_name: "ct1".to_string(),
-    }];
+    let cap_arch_repos = vec![
+        CapArchTier {
+            id: "ct1".to_string(),
+            tier_type: "Capacity".to_string(),
+            name: "General S3 compatible".to_string(),
+            default: true,
+        },
+        CapArchTier {
+            id: "at1".to_string(),
+            tier_type: "Archive".to_string(),
+            name: "General Amazon S3 Glacier".to_string(),
+            default: true
+        }
+    ];
 
-    let arch_repos = vec![ArchTierRepo {
-        archive_tier_repo_id: "at1".to_string(),
-        archive_tier_repo_name: "at1".to_string(),
-    }];
+    // let cap_repos = vec![CapTierRepo {
+    //     cap_tier_repo_id: "ct1".to_string(),
+    //     cap_tier_repo_name: "ct1".to_string(),
+    // }];
+
+    // let arch_repos = vec![ArchTierRepo {
+    //     archive_tier_repo_id: "at1".to_string(),
+    //     archive_tier_repo_name: "at1".to_string(),
+    // }];
 
     let retentions_vec = retentions.into_values().collect();
     let backupwindow_vec = backup_window.into_values().collect();
@@ -224,14 +242,11 @@ fn main() -> Result<()> {
 
     let new_vse = NewVse {
         project_length: project_length,
-        show_points: false,
-        show_workloads: true,
         sites: new_sites,
-        perf_tier_repos: perf_vec,
-        cap_tier_repos: cap_repos,
-        arch_tier_repos: arch_repos,
+        repositories: perf_vec,
+        cap_arch_tiers: cap_arch_repos,
         data_properties: dataproperty_vec,
-        backup_windows: backupwindow_vec,
+        windows: backupwindow_vec,
         retentions: retentions_vec,
         workloads: new_workloads,
     };
