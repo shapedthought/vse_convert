@@ -3,6 +3,7 @@ mod vse_model;
 
 use anyhow::Result;
 use colored::*;
+use std::rc::Rc;
 use new_model::Backup as NewBackup;
 use new_model::Copy as NewCopy;
 use new_model::Site as NewSite;
@@ -64,12 +65,12 @@ fn main() -> Result<()> {
     let mut wl_id: u32 = 0;
 
     for item in workloads.iter() {
-        let dp_id_name = format!(
+        let dp_id_name = Rc::new(format!(
             "CR{}C{}G{}",
             item.change_rate,
             100 - item.reduction,
             item.growth_percent
-        );
+        ));
 
         let dp = DataProperty {
             data_property_id: dp_id_name.clone(),
@@ -79,9 +80,9 @@ fn main() -> Result<()> {
             growth_factor: item.growth_percent,
             default: false
         };
-        data_properties.insert(dp_id_name.clone(), dp);
+        data_properties.insert(dp_id_name.to_string(), dp);
 
-        let bw_id_name = format!("F24I{}", item.backup_window);
+        let bw_id_name = Rc::new(format!("F24I{}", item.backup_window));
 
         let bw = Window {
             backup_window_id: bw_id_name.clone(),
@@ -90,12 +91,12 @@ fn main() -> Result<()> {
             incremental_window: item.backup_window,
             default: false
         };
-        backup_window.insert(bw_id_name.clone(), bw);
+        backup_window.insert(bw_id_name.to_string(), bw);
 
-        let rt_id_name = format!(
+        let rt_id_name = Rc::new(format!(
             "{}D{}W{}M{}Y",
             item.rps_bu, item.bu_weekly, item.bu_monthly, item.bu_yearly
-        );
+        ));
 
         let rp = Retentions {
             retention_id: rt_id_name.clone(),
@@ -107,10 +108,10 @@ fn main() -> Result<()> {
             default: false
         };
 
-        retentions.insert(rt_id_name.clone(), rp);
+        retentions.insert(rt_id_name.to_string(), rp);
 
         if item.copy_site != "None" {
-            let rt_id_copy_name = format!("{}D{}W{}M{}Y", item.rps_bu_copy, item.bu_copy_weekly, item.bu_copy_monthly, item.bu_copy_yearly);
+            let rt_id_copy_name = Rc::new(format!("{}D{}W{}M{}Y", item.rps_bu_copy, item.bu_copy_weekly, item.bu_copy_monthly, item.bu_copy_yearly));
 
             let rpc = Retentions {
                 retention_id: rt_id_copy_name.clone(),
@@ -122,21 +123,21 @@ fn main() -> Result<()> {
                 default: false
             };
 
-            retentions.insert(rt_id_copy_name, rpc);
+            retentions.insert(rt_id_copy_name.to_string(), rpc);
         }
         
 
-        let perf_id_name = format!("repo_{}", item.site.to_lowercase());
+        let perf_id_name = Rc::new(format!("repo_{}", item.site.to_lowercase()));
         let cap_tier_copy: bool;
 
-        if !perf_repos.contains_key(&perf_id_name) {
+        if !perf_repos.contains_key(&perf_id_name.to_string()) {
             let dia_text = format!("Enable Capacity Tier Copy on {perf_id_name}?");
             cap_tier_copy = Input::<bool>::new()
                 .with_prompt(dia_text)
                 .default(false)
                 .interact_text()?;
         } else {
-            cap_tier_copy = perf_repos.get(&perf_id_name).unwrap().copy_capacity_tier_enabled;
+            cap_tier_copy = perf_repos.get(&perf_id_name.to_string()).unwrap().copy_capacity_tier_enabled;
         }
 
         let perf_repo = PerfTierRepo {
@@ -155,7 +156,7 @@ fn main() -> Result<()> {
             immutable_perf: false,
         };
         // perf_repos.push(perf_repo);
-        perf_repos.insert(perf_id_name.clone(), perf_repo);
+        perf_repos.insert(perf_id_name.to_string(), perf_repo);
 
         let mut rps_copies: Option<NewCopy> = None;
 

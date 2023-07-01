@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -25,8 +27,8 @@ pub struct Site {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PerfTierRepo {
-    pub repo_id: String,
-    pub repo_name: String,
+    pub repo_id: Rc<String>,
+    pub repo_name: Rc<String>,
     pub site_id: String,
     pub copy_capacity_tier_enabled: bool,
     pub move_capacity_tier_enabled: bool,
@@ -53,8 +55,8 @@ pub struct CapArchTier {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DataProperty {
-    pub data_property_id: String,
-    pub data_property_name: String,
+    pub data_property_id: Rc<String>,
+    pub data_property_name: Rc<String>,
     pub change_rate: i64,
     pub compression: i64,
     pub growth_factor: i64,
@@ -64,8 +66,8 @@ pub struct DataProperty {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Window {
-    pub backup_window_id: String,
-    pub backup_window_name: String,
+    pub backup_window_id: Rc<String>,
+    pub backup_window_name: Rc<String>,
     pub full_window: i64,
     pub incremental_window: i64,
     pub default: bool
@@ -74,8 +76,8 @@ pub struct Window {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Retentions {
-    pub retention_id: String,
-    pub retention_name: String,
+    pub retention_id: Rc<String>,
+    pub retention_name: Rc<String>,
     pub simple: i64,
     pub weekly: i64,
     pub monthly: i64,
@@ -95,7 +97,7 @@ pub struct Workload {
     pub source_tb: f64,
     pub units: i64,
     pub workload_type: String,
-    pub data_property_id: String,
+    pub data_property_id: Rc<String>,
     pub backup: Backup,
     pub copies_enabled: bool,
     pub copies: Option<Copy>,
@@ -104,9 +106,9 @@ pub struct Workload {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Backup {
-    pub retention_id: String,
-    pub repo_id: String,
-    pub backup_window_id: String,
+    pub retention_id: Rc<String>,
+    pub repo_id: Rc<String>,
+    pub backup_window_id: Rc<String>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -114,5 +116,5 @@ pub struct Backup {
 pub struct Copy {
     pub retention_id: String,
     pub repo_id: String,
-    pub backup_window_id: String,
+    pub backup_window_id: Rc<String>,
 }
