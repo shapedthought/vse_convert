@@ -3,3 +3,6 @@
 *.txt
 *.yaml
 .DS_Store
+vse_convert
+
+vse_convert_rc

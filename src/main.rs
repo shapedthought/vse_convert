@@ -32,6 +32,10 @@ struct Cli {
     #[clap(short, long, value_parser)]
     save_file: String,
 
+    /// Enable capacity tier
+    #[clap(short, long, action, default_value_t = false)]
+    cap_tier: bool,
+
     /// Print the result
     #[clap(short, long, action, default_value_t = false)]
     print: bool,
@@ -129,7 +133,7 @@ fn main() -> Result<()> {
         let perf_id_name = format!("repo_{}", item.site.to_lowercase());
         let cap_tier_copy: bool;
 
-        if !perf_repos.contains_key(&perf_id_name) {
+        if !perf_repos.contains_key(&perf_id_name) && !cli.cap_tier {
             let dia_text = format!("Enable Capacity Tier Copy on {perf_id_name}?");
             cap_tier_copy = Input::<bool>::new()
                 .with_prompt(dia_text)
