@@ -133,14 +133,16 @@ fn main() -> Result<()> {
         let perf_id_name = format!("repo_{}", item.site.to_lowercase());
         let cap_tier_copy: bool;
 
-        if !perf_repos.contains_key(&perf_id_name) && !cli.cap_tier {
+        if !perf_repos.contains_key(&perf_id_name.to_string()) && !cli.cap_tier {
             let dia_text = format!("Enable Capacity Tier Copy on {perf_id_name}?");
             cap_tier_copy = Input::<bool>::new()
                 .with_prompt(dia_text)
                 .default(false)
                 .interact_text()?;
+        } else if cli.cap_tier {
+            cap_tier_copy = true;
         } else {
-            cap_tier_copy = perf_repos.get(&perf_id_name).unwrap().copy_capacity_tier_enabled;
+            cap_tier_copy = perf_repos.get(&perf_id_name.to_string()).unwrap().copy_capacity_tier_enabled;
         }
 
         let perf_repo = PerfTierRepo {
