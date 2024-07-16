@@ -6,7 +6,7 @@ use colored::*;
 use new_model::Backup as NewBackup;
 use new_model::Copy as NewCopy;
 use new_model::Site as NewSite;
-use new_model::{DataProperty, PerfTierRepo, Retentions, Workload};
+use new_model::{DataProperty, PerfTierRepo, Retentions, Workload, WorkloadsNa};
 use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
@@ -14,7 +14,7 @@ use std::path::PathBuf;
 use vse_model::OldVse;
 
 use crate::new_model::CapArchTier;
-use crate::new_model:: NewVse;
+use crate::new_model::NewVse;
 use crate::new_model::Window;
 
 use clap::Parser;
@@ -31,6 +31,10 @@ struct Cli {
     /// The new file name, without extension
     #[clap(short, long, value_parser)]
     save_file: String,
+
+    /// NAS Workload names
+    #[clap(short, long, value_delimiter = ',')]
+    nas: Option<Vec<String>>,
 
     /// Enable capacity tier
     #[clap(short, long, action, default_value_t = false)]
@@ -64,6 +68,7 @@ fn main() -> Result<()> {
     let mut retentions: HashMap<String, Retentions> = HashMap::new();
     let mut perf_repos: HashMap<String, PerfTierRepo> = HashMap::new();
     let mut new_workloads: Vec<Workload> = Vec::new();
+    let mut nas_workloads: Vec<WorkloadsNa> = Vec::new();
 
     let mut wl_id: u32 = 0;
 
@@ -81,7 +86,7 @@ fn main() -> Result<()> {
             change_rate: item.change_rate,
             compression: 100 - item.reduction,
             growth_factor: item.growth_percent,
-            default: false
+            default: false,
         };
         data_properties.insert(dp_id_name.clone(), dp);
 
@@ -92,7 +97,7 @@ fn main() -> Result<()> {
             backup_window_name: bw_id_name.clone(),
             full_window: 24,
             incremental_window: item.backup_window,
-            default: false
+            default: false,
         };
         backup_window.insert(bw_id_name.clone(), bw);
 
@@ -101,6 +106,14 @@ fn main() -> Result<()> {
             item.rps_bu, item.bu_weekly, item.bu_monthly, item.bu_yearly
         );
 
+        let mut retention_type = "Instance".to_string();
+
+        if let Some(nas) = &cli.nas {
+            if nas.contains(&item.work_load_name) {
+                retention_type = "NAS".to_string();
+            }
+        }
+
         let rp = Retentions {
             retention_id: rt_id_name.clone(),
             retention_name: rt_id_name.clone(),
@@ -108,13 +121,25 @@ fn main() -> Result<()> {
             weekly: item.bu_weekly,
             monthly: item.bu_monthly,
             yearly: item.bu_yearly,
-            default: false
+            default: false,
+            retention_type,
         };
 
         retentions.insert(rt_id_name.clone(), rp);
 
         if item.copy_site != "None" {
-            let rt_id_copy_name = format!("{}D{}W{}M{}Y", item.rps_bu_copy, item.bu_copy_weekly, item.bu_copy_monthly, item.bu_copy_yearly);
+            let rt_id_copy_name = format!(
+                "{}D{}W{}M{}Y",
+                item.rps_bu_copy, item.bu_copy_weekly, item.bu_copy_monthly, item.bu_copy_yearly
+            );
+
+            let mut retention_type = "Instance".to_string();
+
+            if let Some(nas) = &cli.nas {
+                if nas.contains(&item.work_load_name) {
+                    retention_type = "NAS".to_string();
+                }
+            }
 
             let rpc = Retentions {
                 retention_id: rt_id_copy_name.clone(),
@@ -123,12 +148,12 @@ fn main() -> Result<()> {
                 weekly: item.bu_copy_weekly,
                 monthly: item.bu_copy_monthly,
                 yearly: item.bu_copy_yearly,
-                default: false
+                default: false,
+                retention_type,
             };
 
             retentions.insert(rt_id_copy_name, rpc);
         }
-        
 
         let perf_id_name = format!("repo_{}", item.site.to_lowercase());
         let cap_tier_copy: bool;
@@ -142,7 +167,10 @@ fn main() -> Result<()> {
         } else if cli.cap_tier {
             cap_tier_copy = true;
         } else {
-            cap_tier_copy = perf_repos.get(&perf_id_name.to_string()).unwrap().copy_capacity_tier_enabled;
+            cap_tier_copy = perf_repos
+                .get(&perf_id_name.to_string())
+                .unwrap()
+                .copy_capacity_tier_enabled;
         }
 
         let perf_repo = PerfTierRepo {
@@ -159,6 +187,7 @@ fn main() -> Result<()> {
             storage_type: "xfsRefs".to_string(),
             immutable_cap: false,
             immutable_perf: false,
+            archive_tier_standalone: false,
         };
         // perf_repos.push(perf_repo);
         perf_repos.insert(perf_id_name.clone(), perf_repo);
@@ -177,35 +206,60 @@ fn main() -> Result<()> {
                 repo_id: format!("repo_{}", item.copy_site.to_lowercase()),
                 backup_window_id: bw_id_name.clone(),
             };
-            // let copies = vec![copy];
             rps_copies = Some(copy)
         }
 
-        let new_workload = Workload {
-            workload_id: format!("wl{}", wl_id),
-            enabled: true,
-            workload_name: item.work_load_name.clone(),
-            site_id: item.site.to_lowercase(),
-            large_block: false,
-            source_tb: item.work_load_cap,
-            units: item.vm_qty,
-            workload_type: item.backup_type.to_uppercase(),
-            data_property_id: dp_id_name,
-            backup: NewBackup {
-                retention_id: rt_id_name,
-                repo_id: perf_id_name,
-                backup_window_id: bw_id_name,
-            },
-            copies_enabled: if item.copy_site != "None" {
-                true
-            } else {
-                false
-            },
-            copies: rps_copies,
-        };
-        new_workloads.push(new_workload);
+        if let Some(nas) = &cli.nas {
+            if nas.contains(&item.work_load_name) {
+                let nas_workload = WorkloadsNa {
+                    workload_id: format!("wl{}", wl_id),
+                    workload_name: item.work_load_name.clone(),
+                    site_id: item.site.to_lowercase(),
+                    files: item.work_load_cap,
+                    source_tb: item.work_load_cap,
+                    io_control: "normal".to_string(),
+                    data_property_id: dp_id_name,
+                    backup: NewBackup {
+                        retention_id: rt_id_name,
+                        repo_id: perf_id_name,
+                        backup_window_id: bw_id_name,
+                    },
+                    copies_enabled: if item.copy_site != "None" {
+                        true
+                    } else {
+                        false
+                    },
+                    copies: rps_copies,
+                };
+                nas_workloads.push(nas_workload);
+            }
+        } else {
+            let new_workload = Workload {
+                workload_id: format!("wl{}", wl_id),
+                enabled: true,
+                workload_name: item.work_load_name.clone(),
+                site_id: item.site.to_lowercase(),
+                large_block: false,
+                source_tb: item.work_load_cap,
+                units: item.vm_qty,
+                workload_type: item.backup_type.to_uppercase(),
+                data_property_id: dp_id_name,
+                backup: NewBackup {
+                    retention_id: rt_id_name,
+                    repo_id: perf_id_name,
+                    backup_window_id: bw_id_name,
+                },
+                copies_enabled: if item.copy_site != "None" {
+                    true
+                } else {
+                    false
+                },
+                copies: rps_copies,
+            };
+            new_workloads.push(new_workload);
 
-        wl_id += 1;
+            wl_id += 1;
+        }
     }
 
     let new_sites: Vec<NewSite> = sites_hash
@@ -227,19 +281,9 @@ fn main() -> Result<()> {
             id: "at1".to_string(),
             tier_type: "Archive".to_string(),
             name: "General Amazon S3 Glacier".to_string(),
-            default: true
-        }
+            default: true,
+        },
     ];
-
-    // let cap_repos = vec![CapTierRepo {
-    //     cap_tier_repo_id: "ct1".to_string(),
-    //     cap_tier_repo_name: "ct1".to_string(),
-    // }];
-
-    // let arch_repos = vec![ArchTierRepo {
-    //     archive_tier_repo_id: "at1".to_string(),
-    //     archive_tier_repo_name: "at1".to_string(),
-    // }];
 
     let retentions_vec = retentions.into_values().collect();
     let backupwindow_vec = backup_window.into_values().collect();
@@ -255,6 +299,8 @@ fn main() -> Result<()> {
         windows: backupwindow_vec,
         retentions: retentions_vec,
         workloads: new_workloads,
+        rounding: "Millions".to_string(),
+        workloads_nas: nas_workloads,
     };
 
     let save_name = cli.save_file.split(".").collect::<Vec<&str>>();
@@ -263,11 +309,6 @@ fn main() -> Result<()> {
     let mut json_file = fs::File::create(file_name)?;
     let vse_string = serde_json::to_string(&new_vse)?;
     json_file.write(vse_string.as_bytes())?;
-
-    let toml_file_name = format!("{}.yaml", save_name[0]);
-    let mut toml_file = fs::File::create(toml_file_name)?;
-    let vse_toml_string = serde_yaml::to_string(&new_vse)?;
-    toml_file.write(vse_toml_string.as_bytes())?;
 
     if cli.print {
         println!("{:#?}", new_vse);

@@ -1,7 +1,6 @@
 use serde::Deserialize;
 use serde::Serialize;
 
-
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NewVse {
@@ -13,6 +12,8 @@ pub struct NewVse {
     pub windows: Vec<Window>,
     pub retentions: Vec<Retentions>,
     pub workloads: Vec<Workload>,
+    pub workloads_nas: Vec<WorkloadsNa>,
+    pub rounding: String,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -33,7 +34,7 @@ pub struct PerfTierRepo {
     pub archive_tier_enabled: bool,
     pub capacity_tier_days: i64,
     pub archive_tier_days: i64,
-    // pub archive_tier_standalone: bool,
+    pub archive_tier_standalone: bool,
     pub capacity_tier_repo_id: String,
     pub archive_tier_repo_id: String,
     pub storage_type: String,
@@ -47,7 +48,7 @@ pub struct CapArchTier {
     pub id: String,
     pub tier_type: String,
     pub name: String,
-    pub default: bool
+    pub default: bool,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -58,7 +59,7 @@ pub struct DataProperty {
     pub change_rate: i64,
     pub compression: i64,
     pub growth_factor: i64,
-    pub default: bool
+    pub default: bool,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -68,7 +69,7 @@ pub struct Window {
     pub backup_window_name: String,
     pub full_window: i64,
     pub incremental_window: i64,
-    pub default: bool
+    pub default: bool,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -80,7 +81,8 @@ pub struct Retentions {
     pub weekly: i64,
     pub monthly: i64,
     pub yearly: i64,
-    pub default: bool
+    pub default: bool,
+    pub retention_type: String,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -115,4 +117,20 @@ pub struct Copy {
     pub retention_id: String,
     pub repo_id: String,
     pub backup_window_id: String,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkloadsNa {
+    pub backup: Backup,
+    pub copies: Option<Copy>,
+    pub files: f64,
+    pub copies_enabled: bool,
+    pub data_property_id: String,
+    pub site_id: String,
+    #[serde(rename = "sourceTB")]
+    pub source_tb: f64,
+    pub workload_id: String,
+    pub workload_name: String,
+    pub io_control: String,
 }
